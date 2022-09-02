@@ -1,0 +1,42 @@
+/**
+ * Based on Ajeya Cotra's 2020 "When compute required to train a transformative model may be attainable".
+ * https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=505210495
+ * 
+ * Adapted by: Jesse Hoogland
+ */
+
+start_year = 2025
+end_year = 2100
+
+FLOP_per_$(y) = {
+    curr_FLOP_per_$ = 4e17
+    compute_$_halving_time = 2.5
+    max_FLOP_per_$ = 1e24
+
+    t = y - start_year
+    (FLOP_per_$_t0) * (exp((log(2)/ compute_$_halving_time) * t)) / (1 + curr_FLOP_per_$ / max_FLOP_per_$ * exp(log(2)/compute_$_halving_time * t))  
+}
+
+log10_FLOP_per_$(y) = log10(FLOP_per_$(y))
+
+frontier_country_GDP(y) = {
+    // Our reference measurement comes from 2020, not 2025.
+    t = y - 2020
+    frontier_country_GDP_2020 = 2.13e13
+    growth_rate = .03 // per year
+    frontier_country_GDP_2020 * (1 + growth_rate)^(t)
+}
+
+log10_frontier_country_GDP(y) = log10(frontier_country_GDP(y))
+
+willingness_to_spend_frac(y) = {
+    curr_spend = 1e9 // in 2020 USD
+    spend_doubling_time = 2.5
+    curr_frac_GWP = curr_spend / frontier_country_GDP(start_year)
+    max_frac_GWP = .01 // of frontier GDP in 2020 USD
+
+    t = y - start_year
+    curr_spend * (exp(log(2)/ spend_doubling_time * t)) / (1 + curr_frac_GWP / max_frac_GWP * exp(log(2) / spend_doubling_time * t))
+}
+
+log10_willingness_to_spend_frac(y) = log10(willingness_to_spend_frac(y))
