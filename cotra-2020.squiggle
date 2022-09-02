@@ -1,9 +1,7 @@
-//
 // Based on Ajeya Cotra's 2020 "When compute required to train a transformative model may be attainable".
 // - https://www.lesswrong.com/posts/KrJfoZzpSDpnrv9va/draft-report-on-ai-timelines
 // 
 // Adapted by: Jesse Hoogland
-
 
 // Best guess 
 // - https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=505210495
@@ -13,114 +11,85 @@ end_year = 2100
 
 flop_per_$(y) = {
     curr_FLOP_per_$ = 4e17
-    compute_$_halving_time = 2.5
-    max_FLOP_per_$ = 1e24
+    compute_$_halving_time = 2.5 // 1.5 to 3.5
+    max_FLOP_per_$ = 1e24 // 22 to 26
 
     t = y - start_year
     curr_FLOP_per_$ * (exp((log(2) / compute_$_halving_time) * t)) / (1 + curr_FLOP_per_$ / max_FLOP_per_$ * exp(log(2)/compute_$_halving_time * t))  
 }
 
-log10_FLOP_per_$(y) = log10(flop_per_$(y))
-
 frontier_country_GDP(y) = {
     // Our reference measurement comes from 2020, not 2025.
     t = y - 2020
     frontier_country_GDP_2020 = 2.13e13
-    growth_rate = .03 // per year
+    growth_rate = .03 // per year  // .02 to .05
     frontier_country_GDP_2020 * (1 + growth_rate)^(t)
 }
 
-log10_frontier_country_GDP(y) = log10(frontier_country_GDP(y))
-
-willingness_to_spend_frac(y) = {
-    curr_spend = 1e9 // in 2020 USD
-    spend_doubling_time = 2.5
+spend(y) = {
+    curr_spend = 1e9 // in 2020 USD  1e8 to 1e10
+    spend_doubling_time = 2.5  // 1 to 3
     curr_frac_GWP = curr_spend / frontier_country_GDP(start_year)
-    max_frac_GWP = .01 // of frontier GDP in 2020 USD
+    max_frac_GWP = .01 // of frontier GDP in 2020 USD  // .005 to .02
 
     t = y - start_year
     curr_spend * (exp(log(2)/ spend_doubling_time * t)) / (1 + curr_frac_GWP / max_frac_GWP * exp(log(2) / spend_doubling_time * t))
 }
 
-log10_willingness_to_spend_frac(y) = log10(willingness_to_spend_frac(y))
+flop(y) = {
+    flop_per_$(y) * spend(y)
+}
 
+log10_flop(y) = log10(flop(y))
 
-// NOTE: I've thrown away lots of fine-grain detail because it annoys squiggle (and I trust that Squiggle's interpolation is smart enough).
-compute_levels_CDF = [
-    { log10_FLOP: 20, lifetime: 0, nn_short: 0, genome: 0.00, nn_medium: 0, nn_long: 0.00, evolution: 0.00 },
-    { log10_FLOP: 20.0080016, lifetime: 0, nn_short: 0, genome: 0.00, nn_medium: 0, nn_long: 0.00, evolution: 0.00 },
-    { log10_FLOP: 21.00820164, lifetime: 0, nn_short: 0, genome: 0, nn_medium: 0, nn_long: 0.00, evolution: 0.00 },
-    { log10_FLOP: 22.00840168, lifetime: 0, nn_short: 0, genome: 0, nn_medium: 0, nn_long: 0, evolution: 0.00 },
-    { log10_FLOP: 23.00860172, lifetime: 0.00, nn_short: 0.00, genome: 0, nn_medium: 0, nn_long: 0, evolution: 0.00 },
-    { log10_FLOP: 24.00880176, lifetime: 0.010632, nn_short: 0.00202, genome: 2.00e-04, nn_medium: 4.96e-04, nn_long: 5.00e-05, evolution: 4.00e-06 },
-    { log10_FLOP: 25.0090018, lifetime: 0.052126, nn_short: 0.0109, genome: 1.36e-03, nn_medium: 0.002978, nn_long: 5.08e-04, evolution: 5.40e-05 },
-    { log10_FLOP: 26.00920184, lifetime: 0.130342, nn_short: 0.030886, genome: 5.00e-03, nn_medium: 0.00927, nn_long: 1.79e-03, evolution: 1.48e-04 },
-    { log10_FLOP: 27.00940188, lifetime: 0.245766, nn_short: 0.067834, genome: 0.014698, nn_medium: 0.022458, nn_long: 5.08e-03, evolution: 4.62e-04 },
-    { log10_FLOP: 28.00960192, lifetime: 0.387778, nn_short: 0.125826, genome: 0.035922, nn_medium: 0.046644, nn_long: 0.012242, evolution: 1.24e-03 },
-    { log10_FLOP: 29.00980196, lifetime: 0.528716, nn_short: 0.200848, genome: 0.073356, nn_medium: 0.082938, nn_long: 0.024314, evolution: 2.66e-03 },
-    { log10_FLOP: 30.0020004, lifetime: 0.648974, nn_short: 0.285028, genome: 0.128188, nn_medium: 0.130884, nn_long: 0.042216, evolution: 5.30e-03 },
-    { log10_FLOP: 31.00220044, lifetime: 0.746416, nn_short: 0.374242, genome: 0.203934, nn_medium: 0.190874, nn_long: 0.068006, evolution: 9.56e-03 },
-    { log10_FLOP: 32.00240048, lifetime: 0.823546, nn_short: 0.465318, genome: 0.299568, nn_medium: 0.26043, nn_long: 0.103542, evolution: 1.66e-02 },
-    { log10_FLOP: 33.00260052, lifetime: 0.88057, nn_short: 0.553544, genome: 0.409048, nn_medium: 0.33867, nn_long: 0.150054, evolution: 2.72e-02 },
-    { log10_FLOP: 34.00280056, lifetime: 0.921518, nn_short: 0.635954, genome: 0.52535, nn_medium: 0.421448, nn_long: 0.207736, evolution: 0.043966 },
-    { log10_FLOP: 35.0030006, lifetime: 0.949828, nn_short: 0.711272, genome: 0.638842, nn_medium: 0.50698, nn_long: 0.276144, evolution: 0.067898 },
-    { log10_FLOP: 36.00320064, lifetime: 0.969258, nn_short: 0.776032, genome: 0.740478, nn_medium: 0.588676, nn_long: 0.35269, evolution: 0.101072 },
-    { log10_FLOP: 37.00340068, lifetime: 0.981754, nn_short: 0.830258, genome: 0.823436, nn_medium: 0.666196, nn_long: 0.4345, evolution: 0.146736 },
-    { log10_FLOP: 38.00360072, lifetime: 0.989512, nn_short: 0.875042, genome: 0.888096, nn_medium: 0.734936, nn_long: 0.516402, evolution: 0.206358 },
-    { log10_FLOP: 39.00380076, lifetime: 0.993836, nn_short: 0.909214, genome: 0.933526, nn_medium: 0.79361, nn_long: 0.596202, evolution: 0.28118 },
-    { log10_FLOP: 40.0040008, lifetime: 0.996496, nn_short: 0.935728, genome: 0.962614, nn_medium: 0.844342, nn_long: 0.67068, evolution: 0.37111 },
-    { log10_FLOP: 41.00420084, lifetime: 0.998116, nn_short: 0.955326, genome: 0.980332, nn_medium: 0.88473, nn_long: 0.73922, evolution: 0.473708 },
-    { log10_FLOP: 42.00440088, lifetime: 0.999092, nn_short: 0.969578, genome: 0.990316, nn_medium: 0.916604, nn_long: 0.796976, evolution: 0.581464 },
-    { log10_FLOP: 43.00460092, lifetime: 0.999554, nn_short: 0.979622, genome: 0.995662, nn_medium: 0.940702, nn_long: 0.846228, evolution: 0.687274 },
-    { log10_FLOP: 44.00480096, lifetime: 0.999798, nn_short: 0.98659, genome: 0.998106, nn_medium: 0.95908, nn_long: 0.88631, evolution: 0.781928 },
-    { log10_FLOP: 45.005001, lifetime: 0.999896, nn_short: 0.991238, genome: 0.999228, nn_medium: 0.971934, nn_long: 0.91742, evolution: 0.859274 },
-    { log10_FLOP: 46.00520104, lifetime: 0.999956, nn_short: 0.994294, genome: 0.999714, nn_medium: 0.981224, nn_long: 0.941356, evolution: 0.916926 },
-    { log10_FLOP: 47.00540108, lifetime: 0.999972, nn_short: 0.996504, genome: 0.9999, nn_medium: 0.98779, nn_long: 0.959726, evolution: 0.954186 },
-    { log10_FLOP: 48.00560112, lifetime: 0.999992, nn_short: 0.99779, genome: 0.999952, nn_medium: 0.992108, nn_long: 0.972442, evolution: 0.976722 },
-    { log10_FLOP: 49.00580116, lifetime: 0.999992, nn_short: 0.998678, genome: 0.999986, nn_medium: 0.99488, nn_long: 0.98131, evolution: 0.989398 },
-    { log10_FLOP: 50.0060012, lifetime: 0.999996, nn_short: 0.999188, genome: 0.999996, nn_medium: 0.996916, nn_long: 0.987698, evolution: 0.995462 },
-    { log10_FLOP: 51.00620124, lifetime: 1, nn_short: 0.999532, genome: 1, nn_medium: 0.998154, nn_long: 0.992128, evolution: 0.998256 },
-    { log10_FLOP: 52.00640128, lifetime: 1, nn_short: 0.999716, genome: 1, nn_medium: 0.99882, nn_long: 0.994994, evolution: 0.999364 },
-    { log10_FLOP: 53.00660132, lifetime: 1, nn_short: 0.999846, genome: 1, nn_medium: 0.999356, nn_long: 0.996802, evolution: 0.999784 },
-    { log10_FLOP: 54.00680136, lifetime: 1, nn_short: 0.999916, genome: 1, nn_medium: 0.999626, nn_long: 0.998108, evolution: 0.999954 },
-    { log10_FLOP: 55.0070014, lifetime: 1, nn_short: 0.999944, genome: 1, nn_medium: 0.999786, nn_long: 0.9989, evolution: 0.99998 },
-    { log10_FLOP: 56.00720144, lifetime: 1, nn_short: 0.999958, genome: 1, nn_medium: 0.999876, nn_long: 0.99934, evolution: 1 },
-    { log10_FLOP: 58.00760152, lifetime: 1, nn_short: 0.999998, genome: 1, nn_medium: 0.999958, nn_long: 0.999764, evolution: 1 },
-    { log10_FLOP: 59.00780156, lifetime: 1, nn_short: 0.999998, genome: 1, nn_medium: 0.999966, nn_long: 0.999898, evolution: 1 },
-    { log10_FLOP: 60, lifetime: 1, nn_short: 0.999998, genome: 1, nn_medium: 0.999996, nn_long: 0.999936, evolution: 1 }
-]
+// NOTE: All of the following are very coarse-grained approximations of Cotra's original estimates:
+// https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=0
 
 // Evolution anchor
 //  "From earliest animals with neurons to modern humans"
 //  ~1e41 FLOP
-get_evolution_anchor(entry) = {x: entry.log10_FLOP, y: entry.evolution}; 
-evolution_anchor_CDF = compute_levels_CDF |> map(get_evolution_anchor) |> PointSet.makeContinuous
+evolution_anchor_PDF = 34 to 47
+evolution_anchor(y) = cdf(evolution_anchor_PDF, log10_flop(y))
 
 // Lifetime anchor 
 //  "By a child's brain over the course of growing to be an adult"
 //  ~1e24 FLOP
-get_lifetime_anchor(entry) = {x: entry.log10_FLOP, y: entry.lifetime}; 
-lifetime_anchor_CDF = compute_levels_CDF |> map(get_lifetime_anchor) |> PointSet.makeContinuous
- 
+lifetime_anchor_PDF = 25 to 35 // 90% confidence
+lifetime_anchor(y) = cdf(lifetime_anchor_PDF, log10_flop(y))
 
 // Neural network anchor
 // "have about as many parameters as we would expect if we simply scaled up 
 // the architectures of the largest current neural networks to run on 
 // [as many] FLOP / subj sec. [as the human brain (~1e15 FLOP/s)].
-get_nn_short_anchor(entry) = {x: entry.log10_FLOP, y: entry.nn_short}; 
-nn_short_anchor_CDF = compute_levels_CDF |> map(get_nn_short_anchor) |> PointSet.makeContinuous
+nn_short_anchor_PDF = 26 to 41
+nn_medium_anchor_PDF = 28 to 44
+nn_long_anchor_PDF = 30 to 46
 
-
-get_nn_medium_anchor(entry) = {x: entry.log10_FLOP, y: entry.nn_medium}; 
-nn_medium_anchor_CDF = compute_levels_CDF |> map(get_nn_medium_anchor) |> PointSet.makeContinuous
-
-
-get_nn_long_anchor(entry) = {x: entry.log10_FLOP, y: entry.nn_long}; 
-nn_long_anchor_CDF = compute_levels_CDF |> map(get_nn_long_anchor) |> PointSet.makeContinuous
+nn_short_anchor(y) = cdf(nn_short_anchor_PDF, log10_flop(y))
+nn_medium_anchor(y) = cdf(nn_medium_anchor_PDF, log10_flop(y))
+nn_long_anchor(y) = cdf(nn_long_anchor_PDF, log10_flop(y))
 
 // Genome Anchor 
 //  "have about as many parameters as there are bytes in the human genome (~7.5e8 bytes)"
+genome_anchor_PDF = 28 to 40
+genome_anchor(y) = cdf(genome_anchor_PDF, log10_flop(y))
 
-get_genome_anchor(entry) = {x: entry.log10_FLOP, y: entry.genome}; 
-genome_anchor_CDF = compute_levels_CDF |> map(get_genome_anchor) |> PointSet.makeContinuous
 
+mixed_PDF = mixture(
+    evolution_anchor_PDF,
+    lifetime_anchor_PDF,
+    nn_short_anchor_PDF,
+    nn_medium_anchor_PDF,
+    nn_long_anchor_PDF,
+    genome_anchor_PDF,
+    [
+        .1,
+        .05,
+        .2,
+        .3,
+        .15,
+        .1
+    ]    
+)
+
+mixed(y) = cdf(mixed_PDF, log10_flop(y))
