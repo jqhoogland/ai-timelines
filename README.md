@@ -2,6 +2,12 @@
 
 A collection of AI timelines modeled with [Squiggle](https://www.squiggle-language.com/).
 
+![Cotra's best guess timeline (2020)](./docs/best_guess.png)
+Cotra's best guess timeline (2020)
+
+![TAI flop distribution](./docs/tai_flop.png)
+Cotra's distribution for FLOP required to produce a TAI, weighted average over all 6 biological anchors (& 7th long-term hypothesis). 
+
 ### Timelines
 
 Currently, this repo houses a simplified version of [Ajeya Cotra's AI timelines report](https://www.lesswrong.com/posts/KrJfoZzpSDpnrv9va/draft-report-on-ai-timelines). 
