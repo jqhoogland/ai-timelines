@@ -12,4 +12,4 @@ Currently, this repo houses a simplified version of [Ajeya Cotra's AI timelines 
 
 It's still early-stage, so this repo is also very much a proof-of-concept for the language. There are a few limitations:
 - No native-support for skew-normal (yet). Cotra makes use of skew-normal a lot. We have to make do with a dingy replacement.
-    - To see the same model but with skew-normals replaced with log-normals, check out `/cotra2020-alt`.
+    - To see the same model but with skew-normals replaced with log-normals, check out `/cotra2020/compute-levels-alt.squiggle`.
