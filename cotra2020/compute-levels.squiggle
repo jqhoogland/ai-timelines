@@ -1,0 +1,54 @@
+// Based on Ajeya Cotra's 2020 "When compute required to train a transformative model may be attainable".
+// - https://www.lesswrong.com/posts/KrJfoZzpSDpnrv9va/draft-report-on-ai-timelines
+// 
+// This file corresponds to the "Computation required to train a transformative model as of 2020" model:
+// - https://colab.research.google.com/drive/1Fpy8eGDWXy-UJ_WTGvSdw_hauU4l-pNS?authuser=1
+//
+// Adapted by: Jesse Hoogland
+
+skew_normal_distribution(params) = {
+    loc = params.loc
+    scale = params.scale
+    shape = params.shape
+
+    {|x| (2 / scale) * pdf(normal(loc, scale), x) * cdf(normal(loc, scale), shape * x)}
+}
+
+
+td_gammon_flops = log10(4 * 2 * (198 * 40 + 40 * 4)) # IBM's 1992 backgammon model with 198 input neurons, 40 hidden neurons, and 4 output neurons. Assuming 4 moves/sec, 2 FLOP/param/move.
+t5_flops = log10(11e9 * 2 * 4) # Google's T5 language model has ~11B parameters; I am assuming 2 FLOP / param / token and 4 tokens / subj sec
+alpha_star_flops = log10(55e6 * 2 * 4.4) # 55 million weights are used in inference; I am guessing 2 FLOP / weight / timestep and ~4.4 timesteps / second
+gpt3_flops = log10(175e9 * 2 * 4) # 175 billion parameters; I am assuming 2 FLOP / param / token and 4 tokens / subj sec
+
+human_brain_FLOPS_median = 15
+mouse_brain_FLOPS_median = 12
+bee_brain_FLOPS_median = 9
+elegans_FLOPS_median = log10(7500)
+human_brain_FLOPS_landauer_limit = log10(7e21)
+
+human_brain_FLOPS_distr = skew_normal_distribution({loc: human_brain_FLOPS_median, scale: 2.5, shape: 4})
+mouse_brain_FLOPS_distr = skew_normal_distribution({loc: mouse_brain_FLOPS_median, scale: 2.5, shape: 4})
+bee_brain_FLOPS_distr = skew_normal_distribution({loc: bee_brain_FLOPS_median, scale: 2.5, shape: 4})
+elegans_FLOPS_distr = skew_normal_distribution({loc: elegans_FLOPS_median, scale: 2.5, shape: 4})
+
+// # Generate the plots
+// t5_line = (t5_flops, 'xkcd:black', 'Google T5 FLOP / subj sec (2019)')
+// alpha_star_flops_line = (alpha_star_flops, 'xkcd:dull green', 'AlphaStar FLOP / subj sec (2019)')
+// td_gammon_line = (td_gammon_flops, 'xkcd:dull brown', 'TD-Gammon FLOP / subj sec (1992)')
+// gpt3_flops_line = (gpt3_flops, 'xkcd:red', 'GPT-3 FLOP / subj sec (2020)')
+
+// human_median_line = (human_brain_FLOPS_median, 'xkcd:clay', 'Human brain FLOP/s, median')
+// human_landauer_line = (human_brain_FLOPS_landauer_limit, 'xkcd:dark blue', 'Human brain FLOP/s, Landauer limit estimate')
+// mouse_median_line = (mouse_brain_FLOPS_median, 'xkcd:brown', 'Mouse brain FLOP/s, median')
+// bee_median_line = (bee_brain_FLOPS_median, 'xkcd:goldenrod', 'Bee brain FLOP/s, median')
+// elegans_median_line = (elegans_FLOPS_median, 'xkcd:dull blue', 'C. Elegans nervous system FLOP/s, median')
+
+// HUMAN_BRAIN_FLOPS_PLOT = (human_brain_FLOPS_distr, 'xkcd:clay', 'Human brain FLOP/s distribution')
+// mouse_brain_FLOPS_plot = (mouse_brain_FLOPS_distr, 'xkcd:brown', 'Mouse brain FLOP/s distribution')
+// bee_brain_FLOPS_plot = (bee_brain_FLOPS_distr, 'xkcd:goldenrod', 'Bee brain FLOP/s distribution')
+// elegans_FLOPS_plot = (elegans_FLOPS_distr, 'xkcd:dull blue', 'C. Elegans nervous system FLOP/s distribution')
+
+// # Package the plots
+// MODEL_FLOPS_LANDMARKS = [t5_line, alpha_star_flops_line, td_gammon_line, gpt3_flops_line]
+// ANIMAL_FLOPS_LANDMARKS = [elegans_median_line, bee_median_line, mouse_median_line, human_median_line, human_landauer_line]
+// ANIMAL_FLOPS_DISTRIBUTIONS = [elegans_FLOPS_plot, bee_brain_FLOPS_plot, mouse_brain_FLOPS_plot]
