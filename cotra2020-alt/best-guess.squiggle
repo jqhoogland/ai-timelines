@@ -1,0 +1,95 @@
+// Based on Ajeya Cotra's 2020 "When compute required to train a transformative model may be attainable".
+// - https://www.lesswrong.com/posts/KrJfoZzpSDpnrv9va/draft-report-on-ai-timelines
+// 
+// Adapted by: Jesse Hoogland
+
+// Best guess 
+// - https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=505210495
+
+start_year = 2025
+end_year = 2100
+
+flop_per_$(y) = {
+    curr_FLOP_per_$ = 4e17
+    compute_$_halving_time = 2.5 // 1.5 to 3.5
+    max_FLOP_per_$ = 1e24 // 22 to 26
+
+    t = y - start_year
+    curr_FLOP_per_$ * (exp((log(2) / compute_$_halving_time) * t)) / (1 + curr_FLOP_per_$ / max_FLOP_per_$ * exp(log(2)/compute_$_halving_time * t))  
+}
+
+frontier_country_GDP(y) = {
+    // Our reference measurement comes from 2020, not 2025.
+    t = y - 2020
+    frontier_country_GDP_2020 = 2.13e13
+    growth_rate = .03 // per year  // .02 to .05
+    frontier_country_GDP_2020 * (1 + growth_rate)^(t)
+}
+
+spend(y) = {
+    curr_spend = 1e9 // in 2020 USD  1e8 to 1e10
+    spend_doubling_time = 2.5  // 1 to 3
+    curr_frac_GWP = curr_spend / frontier_country_GDP(start_year)
+    max_frac_GWP = .01 // of frontier GDP in 2020 USD  // .005 to .02
+
+    t = y - start_year
+    curr_spend * (exp(log(2)/ spend_doubling_time * t)) / (1 + curr_frac_GWP / max_frac_GWP * exp(log(2) / spend_doubling_time * t))
+}
+
+flop(y) = {
+    flop_per_$(y) * spend(y)
+}
+
+log10_flop(y) = log10(flop(y))
+
+// NOTE: All of the following are very coarse-grained approximations of Cotra's original estimates:
+// https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=0
+
+// Evolution anchor
+//  "From earliest animals with neurons to modern humans"
+//  ~1e41 FLOP
+evolution_anchor_PDF = 34 to 47
+evolution_anchor(y) = cdf(evolution_anchor_PDF, log10_flop(y))
+
+// Lifetime anchor 
+//  "By a child's brain over the course of growing to be an adult"
+//  ~1e24 FLOP
+lifetime_anchor_PDF = 25 to 35 // 90% confidence
+lifetime_anchor(y) = cdf(lifetime_anchor_PDF, log10_flop(y))
+
+// Neural network anchor
+// "have about as many parameters as we would expect if we simply scaled up 
+// the architectures of the largest current neural networks to run on 
+// [as many] FLOP / subj sec. [as the human brain (~1e15 FLOP/s)].
+nn_short_anchor_PDF = 26 to 41
+nn_medium_anchor_PDF = 28 to 44
+nn_long_anchor_PDF = 30 to 46
+
+nn_short_anchor(y) = cdf(nn_short_anchor_PDF, log10_flop(y))
+nn_medium_anchor(y) = cdf(nn_medium_anchor_PDF, log10_flop(y))
+nn_long_anchor(y) = cdf(nn_long_anchor_PDF, log10_flop(y))
+
+// Genome Anchor 
+//  "have about as many parameters as there are bytes in the human genome (~7.5e8 bytes)"
+genome_anchor_PDF = 28 to 40
+genome_anchor(y) = cdf(genome_anchor_PDF, log10_flop(y))
+
+
+mixed_PDF = mixture(
+    evolution_anchor_PDF,
+    lifetime_anchor_PDF,
+    nn_short_anchor_PDF,
+    nn_medium_anchor_PDF,
+    nn_long_anchor_PDF,
+    genome_anchor_PDF,
+    [
+        .1,
+        .05,
+        .2,
+        .3,
+        .15,
+        .1
+    ]    
+)
+
+mixed(y) = cdf(mixed_PDF, log10_flop(y))
