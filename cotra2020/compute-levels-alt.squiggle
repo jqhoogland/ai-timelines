@@ -1,12 +1,5 @@
-// Based on Ajeya Cotra's 2020 "When compute required to train a transformative model may be attainable".
-// - https://www.lesswrong.com/posts/KrJfoZzpSDpnrv9va/draft-report-on-ai-timelines
-// 
-// This file corresponds to the "Computation required to train a transformative model as of 2020" model:
-// - https://colab.research.google.com/drive/1Fpy8eGDWXy-UJWTGvSdwHauU4l-pNS?authuser=1
-//
-// This directory replaces instances of skew-normals with log-normals
-//
-// Adapted by: Jesse Hoogland
+// See ./compute-levels.squiggle
+// This directory replaces all instances of skew-normals with log-normals
 
 // -- Reference ML models -----------------------------------------------------
 // in flop/subj. s

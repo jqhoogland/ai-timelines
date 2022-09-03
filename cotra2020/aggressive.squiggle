@@ -7,11 +7,11 @@
 // - https://docs.google.com/spreadsheets/d/1TjNQyVHvHlC-sZbcA7CRKcCp0NxV6MkkqBvL408xrJw/edit#gid=505210495
 
 // Model parameters
-compute$HalvingTime = 2.5 // 1.5 to 3.5
-maxFLOPPer$ = 1e24 // 22 to 26
-growthRate = .03 // per year  // .02 to .05
-spendDoublingTime = 2.5  // 1 to 3
-maxFracGWP = .01 // of frontier GDP in 2020 USD  // .005 to .02
+compute$HalvingTime = 1.5
+maxFLOPPer$ = 1e26
+growthRate = .05
+spendDoublingTime = 1
+maxFracGWP = .02
 
 // Fixed
 startYear = 2025
@@ -87,11 +87,11 @@ mixedPDF = mixture(
     evolutionAnchorPDF,
     [
         .1,
-        .05,
+        .4,
         .2,
-        .3,
-        .15,
-        .1
+        .1,
+        .1,
+        .05
     ]    
 )
 
