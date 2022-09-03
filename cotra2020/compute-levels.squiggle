@@ -6,49 +6,202 @@
 //
 // Adapted by: Jesse Hoogland
 
-skew_normal_distribution(params) = {
-    loc = params.loc
-    scale = params.scale
-    shape = params.shape
+skew_normal(params) = {
+    _skew_normal(params) = {
+        loc = params.loc
+        scale = params.scale
+        shape = params.shape
 
-    {|x| (2 / scale) * pdf(normal(loc, scale), x) * cdf(normal(loc, scale), shape * x)}
+        {|x| (2 / scale) * pdf(normal(loc, scale), x) * cdf(normal(loc, scale), shape * x)}
+    }
+
+    // Incredibly hacky. Sorry
+    range = List.upTo((params.loc - params.scale * 3) * 200, (params.loc + params.scale * 3) * 200)
+    PointSet.makeContinuous(range |> map({|x| {x: x/ 200, y: _skew_normal(params)(x/200)}}))
+}
+
+// -- Reference ML models -----------------------------------------------------
+// in flop/subj. s
+
+td_gammon_flops = log10(4 * 2 * (198 * 40 + 40 * 4)) # IBM's 1992 backgammon model with 198 input neurons, 40 hidden neurons, and 4 output neurons. Assuming 4 moves/sec, 2 flop/param/move.
+t5_flops = log10(11e9 * 2 * 4) # Google's T5 language model has ~11B parameters; I am assuming 2 flop / param / token and 4 tokens / subj sec
+alpha_star_flops = log10(55e6 * 2 * 4.4) # 55 million weights are used in inference; I am guessing 2 flop / weight / timestep and ~4.4 timesteps / second
+gpt3_flops = log10(175e9 * 2 * 4) # 175 billion parameters; I am assuming 2 flop / param / token and 4 tokens / subj sec
+
+// -- Reference brains --------------------------------------------------------
+// in Log10(flop/s or subj. s)
+
+human_brain_flops_landauer_limit = log10(7e21)
+
+human_brain_flops = skew_normal({loc: 15, scale: 2.5, shape: 4})
+mouse_brain_flops = skew_normal({loc: 12, scale: 2.5, shape: 4})
+bee_brain_flops = skew_normal({loc: 9, scale: 2.5, shape: 4})
+elegans_flops = skew_normal({loc: log10(7500), scale: 2.5, shape: 4})
+
+// -- Transformative model flop/subj. s vs. brain flop/s ----------------------
+// How many more/less flop/subj. s do we need to train a transformative model?
+// (Given 2020 algorithms & architectures)
+
+// in OOMs 
+model_flops_vs_brain_flops = -4 to 5 // Note: Cotra specifies a median & scale, Squiggle prefers confidence intervals.
+tai_flops = human_brain_flops + model_flops_vs_brain_flops
+
+
+// -- Transformative model parameters -----------------------------------------
+
+// How many forward passes per second? (in log units)
+tai_params = {
+    tai_forward_pass_per_sec = -1 to 1
+    tai_flop_per_param_per_forward_pass = 0 to 2
+    tai_flop_per_param_per_sec = tai_flop_per_param_per_forward_pass + tai_forward_pass_per_sec // NOTE: Cotra uses a point estimate of 1.5 log10(flop/param/s) 
+    tai_flops - tai_flop_per_param_per_sec
+}
+
+// -- Sample complexity scaling laws ------------------------------------------
+
+median(x) = quantile(x, 0.5)
+
+
+// See Kaplan et al. 2020 & Hestness et al. 2017
+scaling_exponent = {
+    kaplan_2020_compute_optimal = 0.37
+    kaplan_2020_target_accuracy = 0.74
+    linear_ERM_SGD_bounds = 1
+    rl_dataset_mainline = 0.78
+    rl_dataset_high = 1.22
+    hestness_low = 1.28
+    hestness_high = 1.75
+
+    skew_normal({loc: 0.8, scale: 0.2, shape: 0})
 }
 
 
-td_gammon_flops = log10(4 * 2 * (198 * 40 + 40 * 4)) # IBM's 1992 backgammon model with 198 input neurons, 40 hidden neurons, and 4 output neurons. Assuming 4 moves/sec, 2 FLOP/param/move.
-t5_flops = log10(11e9 * 2 * 4) # Google's T5 language model has ~11B parameters; I am assuming 2 FLOP / param / token and 4 tokens / subj sec
-alpha_star_flops = log10(55e6 * 2 * 4.4) # 55 million weights are used in inference; I am guessing 2 FLOP / weight / timestep and ~4.4 timesteps / second
-gpt3_flops = log10(175e9 * 2 * 4) # 175 billion parameters; I am assuming 2 FLOP / param / token and 4 tokens / subj sec
+// D = KP ^ a, where D = # of data points, K is some constant, P = # of parameters, and a is the scaling exponetn.
+// Here, p should be constant, but a can be a distribution
+get_constant_factor(params) = {
+    params.d - params.a * params.p
+}
 
-human_brain_FLOPS_median = 15
-mouse_brain_FLOPS_median = 12
-bee_brain_FLOPS_median = 9
-elegans_FLOPS_median = log10(7500)
-human_brain_FLOPS_landauer_limit = log10(7e21)
+// Reference point on curve
+// NOTE: It's not clear to me where the 12 here actually comes from
+constant_factor = get_constant_factor({p: 12, d: normal({mean: 11.2, stdev: 1.5}), a: scaling_exponent})
 
-human_brain_FLOPS_distr = skew_normal_distribution({loc: human_brain_FLOPS_median, scale: 2.5, shape: 4})
-mouse_brain_FLOPS_distr = skew_normal_distribution({loc: mouse_brain_FLOPS_median, scale: 2.5, shape: 4})
-bee_brain_FLOPS_distr = skew_normal_distribution({loc: bee_brain_FLOPS_median, scale: 2.5, shape: 4})
-elegans_FLOPS_distr = skew_normal_distribution({loc: elegans_FLOPS_median, scale: 2.5, shape: 4})
+tai_samples = {
+    // Hard-coded until we get better/more-accurate skew_normal distributions
+    tai_params_median = 14.3 // median(tai_params)
 
-// # Generate the plots
-// t5_line = (t5_flops, 'xkcd:black', 'Google T5 FLOP / subj sec (2019)')
-// alpha_star_flops_line = (alpha_star_flops, 'xkcd:dull green', 'AlphaStar FLOP / subj sec (2019)')
-// td_gammon_line = (td_gammon_flops, 'xkcd:dull brown', 'TD-Gammon FLOP / subj sec (1992)')
-// gpt3_flops_line = (gpt3_flops, 'xkcd:red', 'GPT-3 FLOP / subj sec (2020)')
+    constant_factor + scaling_exponent * tai_params_median 
+}
 
-// human_median_line = (human_brain_FLOPS_median, 'xkcd:clay', 'Human brain FLOP/s, median')
-// human_landauer_line = (human_brain_FLOPS_landauer_limit, 'xkcd:dark blue', 'Human brain FLOP/s, Landauer limit estimate')
-// mouse_median_line = (mouse_brain_FLOPS_median, 'xkcd:brown', 'Mouse brain FLOP/s, median')
-// bee_median_line = (bee_brain_FLOPS_median, 'xkcd:goldenrod', 'Bee brain FLOP/s, median')
-// elegans_median_line = (elegans_FLOPS_median, 'xkcd:dull blue', 'C. Elegans nervous system FLOP/s, median')
+// -- Training FLOP Landscape -------------------------------------------------
 
-// HUMAN_BRAIN_FLOPS_PLOT = (human_brain_FLOPS_distr, 'xkcd:clay', 'Human brain FLOP/s distribution')
-// mouse_brain_FLOPS_plot = (mouse_brain_FLOPS_distr, 'xkcd:brown', 'Mouse brain FLOP/s distribution')
-// bee_brain_FLOPS_plot = (bee_brain_FLOPS_distr, 'xkcd:goldenrod', 'Bee brain FLOP/s distribution')
-// elegans_FLOPS_plot = (elegans_FLOPS_distr, 'xkcd:dull blue', 'C. Elegans nervous system FLOP/s distribution')
+// Past and current effective flop per dollar
+fourties_flop_per_dollar = log10(500 * 5 * 365 * 24 * 60 * 60 / 6.3e9) # ENIAC computer flop per dollar (cost of $6.3B inflation-adjusted, 500 flop/s). I'm assuming a longer amortization period (five years)
+sixties_flop_per_dollar = 6.2 # 1964 flop per dollar, eyeballing from the charts in the previous notebook
+curr_flop_per_dollar = log10(1.2e17) # 2020 flop per dollar, estimated from the V100 chip (see calculation in the document)
 
-// # Package the plots
-// MODEL_FLOPS_LANDMARKS = [t5_line, alpha_star_flops_line, td_gammon_line, gpt3_flops_line]
-// ANIMAL_FLOPS_LANDMARKS = [elegans_median_line, bee_median_line, mouse_median_line, human_median_line, human_landauer_line]
-// ANIMAL_FLOPS_DISTRIBUTIONS = [elegans_FLOPS_plot, bee_brain_FLOPS_plot, mouse_brain_FLOPS_plot]
+// Levels of spending
+alpha_star_spend = log10(1.1e6) # Estimate of the cost of the AlphaStar training run
+manhattan_spend = log10(30e9) # Manhattan Project cost $30B inflation-adjusted over five years 
+apollo_peak_spend = log10(157e9) # Most expensive four years of the Apollo Project cost $157B inflation-adjusted 
+
+// Hypothetical amounts of compute purchasable in the past or present
+old_alpha_star_flop = alpha_star_spend + fourties_flop_per_dollar # Amount of flop that could be purchased by spending AlphaStar compute budget in 1945
+manhattan_flop = manhattan_spend + fourties_flop_per_dollar # Amount of flop that could be purchased by spending Manhattan Project money entirely on 1945 computers
+apollo_flop = apollo_peak_spend + sixties_flop_per_dollar # Amount of flop that could be purchased by spending Apollo Project money entirely on 1964 computers
+alpha_star_flop = alpha_star_spend + curr_flop_per_dollar # Total flop in AlphaStar training run
+modern_megaproject_flop = manhattan_spend + curr_flop_per_dollar # Amount of flop that could be purchased by spending $30B today
+
+// -- NN anchors --------------------------------------------------------------
+
+model_size_anchor(params) = {
+    flops = params.flops
+
+    // Scaling law
+    p = params.p
+    a = params.a
+    k = params.k
+
+    horizon_len = params.horizon_len
+    train_flop = (flops + horizon_len) + (k + p * a)
+
+    train_flop
+}
+
+// Short-horizon: How many log(subj. s) of compute should we be able to simulate
+nn_short = {
+    model_size_anchor({
+        flops: tai_flops,
+        p: 14.3,
+        a: scaling_exponent,
+        k: constant_factor,
+        horizon_len: uniform(0, 3)
+    })
+}
+
+nn_medium = {
+    model_size_anchor({
+        flops: tai_flops,
+        p: 14.3,
+        a: scaling_exponent,
+        k: constant_factor,
+        horizon_len: uniform(3, 6)
+    })
+}
+
+nn_long = {
+    model_size_anchor({
+        flops: tai_flops,
+        p: 14.3,
+        a: scaling_exponent,
+        k: constant_factor,
+        horizon_len: uniform(6, 9)
+    })
+}
+
+// -- Genome anchor -----------------------------------------------------------
+
+genome = {
+    genome_bytes_median = log10(750e6)
+
+    model_size_anchor({
+        flops: tai_flops,
+        p: normal({mean: genome_bytes_median, stdev: 2}),
+        a: scaling_exponent,
+        k: constant_factor,
+        horizon_len: uniform(7, 9)
+    })
+}
+
+// -- Lifetime anchor ---------------------------------------------------------
+
+human_brain_synapses_median = 14.5
+
+lifetime = {
+    lifetime_seconds = 9 // ~32 years
+    human_lifetime_flop = human_brain_flops + lifetime_seconds
+
+    // NOTE: Squiggle is having trouble with the skew_normal here, so I'm using a log-normal instead
+    // train_flop_vs_lifetime = skew_normal({loc: 3, scale: 5, shape: 3})
+    train_flop_vs_lifetime = 0 to 12
+
+    human_lifetime_flop + train_flop_vs_lifetime
+}
+
+
+// -- Evolution anchor --------------------------------------------------------
+
+evolution = {
+    sec_in_year = log10(365 * 24 * 60 * 60)
+    ancestors_average_pop = uniform(19, 23) # Tomasik estimates ~1e21 nematodes, which I am taking as representative of the average ancestor
+    evolutionary_time_in_sec = uniform(8.15, 9.45) + sec_in_year # 1 billion years since early neurons
+    ancestors_average_brain_flops = elegans_flops
+    ancestors_flop = ancestors_average_brain_flops + evolutionary_time_in_sec + ancestors_average_pop # Assuming the average brain size over evolutionary history is the size of C Elegans (~10,000 flop/s)
+    ancestors_flop_median = median(ancestors_flop)
+
+    // NOTE: Squiggle is having trouble with the skew_normal here, so I'm using a log-normal instead
+    // train_flop_vs_evolution = skew_normal({loc: 0, scale: 5, shape: -3})
+    train_flop_vs_evolution = (0 to 10) - 10
+
+    ancestors_flop + train_flop_vs_evolution
+}
