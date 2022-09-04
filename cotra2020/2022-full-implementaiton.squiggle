@@ -1,0 +1,156 @@
+// Based on Ajeya Cotra's 2022 "Two-year update on my personal AI timelines".
+// - https://www.lesswrong.com/posts/AfH2oPHCApdKicM4m/two-year-update-on-my-personal-ai-timelines
+//
+// This Squiggle adaptation is by Peter Wildeford, which was built from an adaptation by Jesse Hoogland
+//
+// Unfortunately a lot of Cotra's 2022 update is currently unknown, so this is just an approximation guessing at what she has been thinking about
+
+start_year = 2025
+end_year = 2100
+
+minx(n, max) = { if n > max then max else n }
+maxx(n, min) = { if n < min then min else n }
+bound(x, min, max) = maxx(minx(x, max), min)
+
+sminx(n, max) = SampleSet.map(n, minx)
+smaxx(n, min) = SampleSet.map(n, maxx)
+sbound(x, min, max) = smaxx(sminx(x, max), min)
+
+bayes_update_against_low_end_flop(anchor) = anchor |> truncateLeft(26)
+
+anchor(brain, efficiency, transformative_vs_human, horizon_length,
+       scaling_exponent, params, ref_params, ref_params_samples) = {
+           
+    anchor = brain + efficiency + transformative_vs_human +
+             horizon_length + ref_params_samples -
+             scaling_exponent * ref_params +
+             scaling_exponent * params
+             
+    anchor |> bayes_update_against_low_end_flop
+}
+
+nn_anchor(h) = {
+    brain = 11 to 19.5
+    efficiency = 1
+    transformative_vs_human = -2 to 2
+    scaling_exponent = 0.5 to 1.1
+    flops_per_param_per_sec = 1 to 2
+    params = brain + efficiency - flops_per_param_per_sec
+    ref_params = 11.2
+    ref_params_samples = 12
+    
+    anchor(brain, efficiency, transformative_vs_human, h, scaling_exponent,
+           params, ref_params, ref_params_samples)
+}
+
+gpt_nn = nn_anchor(0) // This is new - Cotra (2022) now uses a GPT anchor
+short_nn = nn_anchor(0 to 3)
+medium_nn = nn_anchor(3 to 6)
+long_nn = nn_anchor(6 to 9)
+
+lifetime_anchor = anchor(11 to 19.5,
+                         mixture(2 to 5, 5 to 9, [0.5,0.5]),
+                         -2 to 2,
+                         9,
+                         0,
+                         (11 to 19.5) + mixture(2 to 5, 5 to 9, [0.5,0.5]) - (1 to 2),
+                         0,
+                         0)
+
+average_ancestor_brain_flops = 3 to 6
+log_n_individuals = 20 to 22
+evo_time_log_sec = 16
+evolution_anchor = anchor(average_ancestor_brain_flops,
+                          -6 to 5, // TODO: This seems not quite right
+                          -2 to 2,
+                          log_n_individuals + evo_time_log_sec,
+                          0,
+                          average_ancestor_brain_flops + (-2 to 2) - (1 to 2),
+                          0,
+                          0)
+
+genome_anchor = anchor(11 to 19.5,
+                       0 to 2,
+                       -2 to 2,
+                       7 to 9,
+                       0.5 to 1.1,
+                       8.3 to 9.44,
+                       11.2,
+                       12)
+
+no_path_anchor = 60 to 70
+
+mixed_PDF = mixture(
+    evolution_anchor,
+    lifetime_anchor,
+    gpt_nn,
+    short_nn,
+    medium_nn,
+    long_nn,
+    genome_anchor,
+    no_path_anchor,
+    [
+        .1, // evolution
+        .1, // lifetime
+        .17, // gpt
+        .3, // short
+        .1, // medium
+        .1, // long
+        .1, // genome
+        .03 // no path
+    ] // These are guesses as to her weights since they are not actually published
+)
+
+flop_per_$(y) = {
+    curr_FLOP_per_$ = 4e18 // This is her one-time update towards higher FLOP per $
+    compute_$_halving_time = 2.5
+    max_FLOP_per_$ = 1e24
+    t = y - start_year
+    curr_FLOP_per_$ * (exp((log(2) / compute_$_halving_time) * t)) / (1 + curr_FLOP_per_$ / max_FLOP_per_$ * exp(log(2) / compute_$_halving_time * t))  
+}
+
+frontier_country_GDP(y) = {
+    // Our reference measurement comes from 2020, not 2025.
+    t = y - 2020
+    frontier_country_GDP_2020 = 2.13e13
+    growth_rate = .03 // per year
+    frontier_country_GDP_2020 * (1 + growth_rate)^(t)
+}
+
+spend(y) = {
+    initial_pay = 1e9 // in 2020 USD  1e8 to 1e10
+    spend_doubling_time = 2.5
+    gdp = frontier_country_GDP(y)
+    max_gdp_frac = .01 // of frontier GDP in 2020 USD
+    t = y - start_year
+    x = (log(2) / spend_doubling_time) * t
+    10 ^ (log10(initial_pay) + log10(exp(x)) - log10(1 + initial_pay / (gdp * max_gdp_frac) * exp(x)))
+}
+
+flop(y) = {
+    flop_per_$(y) * spend(y)
+}
+
+logflop_at_y(y) = log10(flop(y))
+
+algo_progress_reduce_at_y_for_f(y, f) = {
+    max_algo_reduction = bound(2 + (f - 32) / 4, 2, 5)
+    algo_halving_time = bound(3.5 - (f - 29) / 4, 2, 3.5)
+    t = y - start_year
+    r = (exp((log(2) / algo_halving_time) * t)) / (1 + 1 / max_algo_reduction * exp(log(2) / algo_halving_time * t))
+    f - r
+}
+
+flop_to_make_tai_at_y(y) = {
+    SampleSet.map(SampleSet.fromDist(mixed_PDF),
+                  { |f| algo_progress_reduce_at_y_for_f(y, f) })
+}
+
+mixed(y) = cdf(flop_to_make_tai_at_y(y), logflop_at_y(y))
+
+{
+    '2030': mixed(2030), // Should be ~15%
+    '2036': mixed(2036), // Should be ~35%
+    '2040': mixed(2040), // Should be ~50%
+    '2050': mixed(2050)  // Should be ~60%
+}
